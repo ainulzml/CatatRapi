@@ -78,7 +78,7 @@ function rows_(name) {
   const sheet = sheet_(name), headers = NK[name], last = sheet.getLastRow();
   if (last < 2) return [];
   return sheet.getRange(2,1,last-1,headers.length).getValues().map(function(row,index) {
-    const obj = {_row:index+2}; headers.forEach(function(h,i){obj[h]=row[i];}); return obj;
+    const obj = {_row:index+2}; headers.forEach(function(h,i){const value=row[i];obj[h]=(h==='date'&&value instanceof Date)?Utilities.formatDate(value,sheet.getParent().getSpreadsheetTimeZone(),'yyyy-MM-dd'):value;}); return obj;
   });
 }
 function append_(name,obj) {
