@@ -146,13 +146,13 @@
   </div>
 
   <template id="journal-template">
-    <form id="journal-form" class="modal-form">
+    <form id="journal-form" class="modal-form" novalidate>
       <div class="form-grid two"><label>Tanggal<input id="journal-date" type="date" required /></label><label>Referensi <input id="journal-reference" maxlength="40" placeholder="Opsional, mis. INV-001" /></label></div>
       <label>Deskripsi transaksi<input id="journal-description" maxlength="160" placeholder="Contoh: Pembayaran sewa kantor November" required /></label>
       <div class="journal-lines-heading"><strong>Baris jurnal</strong><button id="add-journal-line" class="text-btn" type="button">＋ Tambah baris</button></div>
       <div id="journal-lines" class="journal-lines"></div>
       <div class="journal-totals"><span>Total debit <b id="journal-debit-total">Rp0</b></span><span>Total kredit <b id="journal-credit-total">Rp0</b></span><strong id="journal-balance-status" class="unbalanced">Belum seimbang</strong></div>
-      <p class="field-hint">Gunakan minimal dua baris. Jurnal hanya dapat disimpan jika debit = kredit dan nominal lebih dari nol.</p>
+      <div class="info-box journal-help"><b>Contoh transaksi pertama</b><p>Pilih <b>1100 — Kas</b>, isi Debit Rp100.000. Pada baris kedua pilih <b>3100 — Modal Pemilik</b>, isi Kredit Rp100.000. Status harus berubah menjadi <b>Seimbang</b> sebelum disimpan.</p></div><p class="field-hint">Gunakan minimal dua baris. CatatRapi akan memberi tahu baris yang belum lengkap atau nominal yang belum seimbang.</p>
       <div class="modal-actions"><button class="secondary-btn" type="button" data-close-modal>Batal</button><button id="save-journal" class="primary-btn" type="submit">Simpan jurnal</button></div>
     </form>
   </template>
@@ -163,5 +163,5 @@
   <template id="member-template"><form id="member-form" class="modal-form"><label>Nama pengguna yang diundang<input id="member-username" minlength="3" maxlength="32" placeholder="Harus sudah terdaftar" required /></label><label>Peran<select id="member-role"><option value="editor">Editor — dapat mencatat dan mengubah</option><option value="viewer">Pembaca — hanya melihat</option></select></label><div class="info-box"><b>Undangan langsung</b><p>Pengguna harus memiliki akun CatatRapi terlebih dahulu. Akses dapat dicabut oleh pemilik kapan saja.</p></div><div class="modal-actions"><button class="secondary-btn" type="button" data-close-modal>Batal</button><button class="primary-btn" type="submit">Berikan akses</button></div></form></template>
 
   <script src="app.js"></script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5ac47e91a9040b5',t:'MTc5NDcyNDk5OA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5ac47e91a9040b5',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
