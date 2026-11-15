@@ -1,0 +1,14 @@
+# Secrets and local settings
+.env
+.env.*
+.dev.vars
+*.local
+
+# OS/editor files
+.DS_Store
+.vscode/
+.idea/
+
+# Dependencies and reports
+node_modules/
+coverage/

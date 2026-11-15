@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#10243d" />
+  <title>CatatRapi — Pencatatan Keuangan</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <section id="auth-screen" class="auth-screen">
+    <div class="auth-panel brand-panel">
+      <div class="brand-logo-auth"><img src="assets/catatrapi-crp-logo-web.png" alt="Logo CRp CatatRapi" /></div>
+      <p class="eyebrow">CATATRAPI</p>
+      <h1>Keuangan rapi, keputusan lebih pasti.</h1>
+      <p class="brand-copy">Kelola keuangan pribadi, bisnis, atau proyek dengan jurnal berpasangan yang rapi dan laporan yang dapat dipertanggungjawabkan.</p>
+      <div class="feature-list">
+        <div><b>✓</b><span>Buku pencatatan terpisah untuk tiap kebutuhan</span></div>
+        <div><b>✓</b><span>Validasi debit dan kredit otomatis seimbang</span></div>
+        <div><b>✓</b><span>Hak akses Pemilik, Editor, dan Pembaca</span></div>
+      </div>
+      <p class="security-note">Data produksi disiapkan untuk disimpan melalui Google Sheets + Apps Script. Mode demo ini menyimpan data terenkripsi-verifier di browser Anda.</p>
+    </div>
+
+    <div class="auth-panel form-panel">
+      <div class="auth-tabs" role="tablist">
+        <button class="tab active" data-auth-tab="login" role="tab">Masuk</button>
+        <button class="tab" data-auth-tab="register" role="tab">Daftar</button>
+      </div>
+      <form id="login-form" class="auth-form">
+        <h2>Selamat datang kembali</h2>
+        <p>Masuk ke buku pencatatan Anda.</p>
+        <label>Nama pengguna<input id="login-username" autocomplete="username" minlength="3" maxlength="32" placeholder="mis. rani.putri" required /></label>
+        <label>Secret number / PIN<input id="login-pin" autocomplete="current-password" inputmode="numeric" pattern="[0-9]*" minlength="6" maxlength="16" type="password" placeholder="Minimal 6 angka" required /></label>
+        <button class="primary-btn full" type="submit">Masuk <span>→</span></button>
+        <button id="demo-login" class="text-btn center" type="button">Coba ruang demo</button>
+      </form>
+      <form id="register-form" class="auth-form hidden">
+        <h2>Buat akun baru</h2>
+        <p>PIN tidak disimpan dalam bentuk teks biasa.</p>
+        <label>Nama lengkap<input id="register-name" autocomplete="name" maxlength="60" placeholder="Nama yang tampil di aplikasi" required /></label>
+        <label>Nama pengguna<input id="register-username" autocomplete="username" minlength="3" maxlength="32" placeholder="Huruf, angka, titik, atau garis bawah" required /></label>
+        <label>Secret number / PIN<input id="register-pin" autocomplete="new-password" inputmode="numeric" pattern="[0-9]*" minlength="6" maxlength="16" type="password" placeholder="6–16 angka; gunakan PIN yang unik" required /></label>
+        <label>Konfirmasi PIN<input id="register-pin-confirm" autocomplete="new-password" inputmode="numeric" pattern="[0-9]*" minlength="6" maxlength="16" type="password" placeholder="Ketik ulang PIN" required /></label>
+        <button class="primary-btn full" type="submit">Buat akun <span>→</span></button>
+      </form>
+    </div>
+  </section>
+
+  <div id="app-shell" class="app-shell hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <div class="logo"><img class="logo-image" src="assets/catatrapi-crp-logo-web.png" alt="Logo CRp CatatRapi" /><span>Catat<span>Rapi</span></span></div>
+        <button id="close-sidebar" class="icon-btn mobile-only" aria-label="Tutup menu">×</button>
+      </div>
+      <div class="book-switcher-wrap">
+        <button id="book-switcher" class="book-switcher" aria-label="Pilih buku pencatatan">
+          <span class="book-icon">▣</span><span class="book-switcher-text"><small>Buku aktif</small><strong id="active-book-name">Memuat…</strong></span><span class="chevron">⌄</span>
+        </button>
+        <div id="book-menu" class="book-menu hidden"></div>
+      </div>
+      <nav class="main-nav" aria-label="Navigasi utama">
+        <button class="nav-item active" data-view="dashboard"><span>▦</span>Ringkasan</button>
+        <button class="nav-item" data-view="transactions"><span>⇄</span>Jurnal transaksi</button>
+        <button class="nav-item" data-view="accounts"><span>▤</span>Daftar akun</button>
+        <button class="nav-item" data-view="budget"><span>◴</span>Anggaran</button>
+        <button class="nav-item" data-view="reports"><span>◔</span>Laporan</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="nav-item" data-view="members"><span>♧</span>Akses & anggota</button>
+        <button class="nav-item" data-view="settings"><span>⚙</span>Pengaturan data</button>
+        <button id="logout-btn" class="nav-item danger"><span>↪</span>Keluar</button>
+        <div class="user-card"><div id="user-initials" class="avatar">A</div><div><strong id="current-user-name">–</strong><small id="current-user-role">Pemilik</small></div></div>
+      </div>
+    </aside>
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+    <main class="main-content">
+      <header class="topbar"><button id="open-sidebar" class="icon-btn mobile-only" aria-label="Buka menu">☰</button><div class="breadcrumb"><span id="breadcrumb-book">Buku</span><b>/</b><strong id="page-title">Ringkasan</strong></div><div class="topbar-actions"><span id="connection-status" class="connection local">● Mode demo</span><button id="new-transaction-top" class="primary-btn compact">＋ Transaksi</button></div></header>
+
+      <section id="view-dashboard" class="view active-view">
+        <div class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1>Ringkasan keuangan</h1><p id="dashboard-period" class="muted">Periode berjalan</p></div><div class="heading-actions"><button id="create-book-btn" class="secondary-btn">＋ Buku baru</button><button id="new-transaction-btn" class="primary-btn">＋ Catat transaksi</button></div></div>
+        <div class="stat-grid">
+          <article class="stat-card"><div class="stat-label"><span>Kas & bank</span><span class="stat-icon blue">⌁</span></div><strong id="stat-cash">Rp0</strong><small id="stat-cash-sub">Saldo akun likuid</small></article>
+          <article class="stat-card"><div class="stat-label"><span>Pendapatan</span><span class="stat-icon green">↗</span></div><strong id="stat-income">Rp0</strong><small id="stat-income-sub">Bulan ini</small></article>
+          <article class="stat-card"><div class="stat-label"><span>Pengeluaran</span><span class="stat-icon orange">↘</span></div><strong id="stat-expense">Rp0</strong><small id="stat-expense-sub">Bulan ini</small></article>
+          <article class="stat-card"><div class="stat-label"><span>Posisi bersih</span><span class="stat-icon purple">◈</span></div><strong id="stat-networth">Rp0</strong><small id="stat-networth-sub">Aset dikurangi kewajiban</small></article>
+        </div>
+        <div class="dashboard-grid">
+          <article class="card cashflow-card"><div class="card-header"><div><h2>Arus kas</h2><p class="muted">6 bulan terakhir</p></div><div class="legend"><span><i class="legend-dot income-dot"></i>Masuk</span><span><i class="legend-dot expense-dot"></i>Keluar</span></div></div><div id="cashflow-chart" class="cashflow-chart"></div></article>
+          <article class="card account-health"><div class="card-header"><div><h2>Komposisi akun</h2><p class="muted">Saldo saat ini</p></div></div><div id="account-health-list" class="health-list"></div></article>
+          <article class="card recent-card"><div class="card-header"><div><h2>Transaksi terbaru</h2><p class="muted">Entri jurnal terakhir</p></div><button class="text-btn" data-go-view="transactions">Lihat semua</button></div><div id="recent-transactions" class="transaction-mini-list"></div></article>
+          <article class="card insight-card"><div class="insight-icon">✦</div><p class="eyebrow">KONTROL KEUANGAN</p><h2 id="insight-title">Jurnal Anda seimbang.</h2><p id="insight-body">Setiap transaksi telah memakai prinsip debit dan kredit.</p><button class="text-btn" data-go-view="reports">Tinjau laporan →</button></article>
+        </div>
+      </section>
+
+      <section id="view-transactions" class="view">
+        <div class="page-heading"><div><p class="eyebrow">JURNAL UMUM</p><h1>Transaksi</h1><p class="muted">Setiap entri harus memiliki total debit dan kredit yang sama.</p></div><button class="primary-btn" data-open-modal="journal">＋ Catat transaksi</button></div>
+        <div class="toolbar card"><div class="search-box">⌕<input id="transaction-search" placeholder="Cari deskripsi, referensi, atau akun" /></div><select id="transaction-period"><option value="all">Semua periode</option><option value="month">Bulan ini</option><option value="year">Tahun ini</option></select><button id="export-journal" class="secondary-btn small">⇩ Ekspor CSV</button></div>
+        <article class="card table-card"><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Referensi & deskripsi</th><th>Akun / jurnal</th><th class="right">Debit</th><th class="right">Kredit</th><th>Status</th><th></th></tr></thead><tbody id="transactions-table"></tbody></table></div><div id="transactions-empty" class="empty-state hidden"><span>⌁</span><h3>Belum ada transaksi</h3><p>Mulai catat transaksi pertama untuk buku ini.</p><button class="primary-btn" data-open-modal="journal">＋ Catat transaksi</button></div></article>
+      </section>
+
+      <section id="view-accounts" class="view">
+        <div class="page-heading"><div><p class="eyebrow">CHART OF ACCOUNTS</p><h1>Daftar akun</h1><p class="muted">Struktur akun standar untuk pencatatan berpasangan.</p></div><button class="primary-btn" data-open-modal="account">＋ Tambah akun</button></div>
+        <div class="account-summary"><button class="account-type-card active" data-account-filter="all"><small>SEMUA AKUN</small><strong id="all-accounts-count">0</strong></button><button class="account-type-card" data-account-filter="asset"><small>ASET</small><strong id="asset-balance">Rp0</strong></button><button class="account-type-card" data-account-filter="liability"><small>KEWAJIBAN</small><strong id="liability-balance">Rp0</strong></button><button class="account-type-card" data-account-filter="equity"><small>EKUITAS</small><strong id="equity-balance">Rp0</strong></button></div>
+        <article class="card table-card"><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Nama akun</th><th>Kelompok</th><th>Saldo normal</th><th class="right">Saldo</th><th>Status</th></tr></thead><tbody id="accounts-table"></tbody></table></div></article>
+      </section>
+
+      <section id="view-budget" class="view">
+        <div class="page-heading"><div><p class="eyebrow">PERENCANAAN</p><h1>Anggaran</h1><p class="muted">Bandingkan target dengan realisasi pengeluaran periode ini.</p></div><button class="primary-btn" data-open-modal="budget">＋ Tetapkan anggaran</button></div>
+        <article class="card budget-overview"><div><p class="muted">Total anggaran bulan ini</p><h2 id="budget-total">Rp0</h2></div><div><p class="muted">Realisasi</p><h2 id="budget-actual">Rp0</h2></div><div><p class="muted">Sisa tersedia</p><h2 id="budget-remaining">Rp0</h2></div></article>
+        <article class="card"><div id="budget-list" class="budget-list"></div><div id="budget-empty" class="empty-state hidden"><span>◴</span><h3>Anggaran belum dibuat</h3><p>Tetapkan batas belanja agar arus kas lebih terarah.</p></div></article>
+      </section>
+
+      <section id="view-reports" class="view">
+        <div class="page-heading"><div><p class="eyebrow">LAPORAN</p><h1>Laporan keuangan</h1><p class="muted">Ringkasan berdasarkan jurnal yang sudah dibukukan.</p></div><div class="report-actions"><input id="report-date" type="date" /><button id="print-report" class="secondary-btn">▣ Cetak</button></div></div>
+        <div class="report-tabs"><button class="report-tab active" data-report="income">Laba rugi</button><button class="report-tab" data-report="position">Posisi keuangan</button><button class="report-tab" data-report="trial">Neraca saldo</button><button class="report-tab" data-report="cashflow">Arus kas</button></div>
+        <article class="card report-paper"><div id="report-content"></div></article>
+      </section>
+
+      <section id="view-members" class="view">
+        <div class="page-heading"><div><p class="eyebrow">KOLABORASI</p><h1>Akses & anggota</h1><p class="muted">Kelola siapa yang boleh melihat atau mengubah buku ini.</p></div><button id="invite-member" class="primary-btn">＋ Undang anggota</button></div>
+        <article class="card member-rules"><span class="rule-icon">♧</span><div><h3>Peran dengan batas yang jelas</h3><p><b>Pemilik</b> mengelola buku dan akses. <b>Editor</b> dapat membuat serta mengubah transaksi. <b>Pembaca</b> hanya dapat melihat laporan.</p></div></article>
+        <article class="card"><div id="members-list" class="members-list"></div></article>
+      </section>
+
+      <section id="view-settings" class="view">
+        <div class="page-heading"><div><p class="eyebrow">KONEKSI</p><h1>Pengaturan data</h1><p class="muted">Gunakan Google Sheets sebagai basis data melalui Apps Script.</p></div></div>
+        <div class="settings-grid">
+          <article class="card setting-card"><div class="setting-heading"><span class="setting-icon">▦</span><div><h2>Koneksi Google Sheets</h2><p class="muted">Produksi memakai proxy aman Netlify Function di <b>/api</b>.</p></div></div><label>URL Apps Script untuk pengujian langsung (opsional)<input id="api-url-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label><div class="settings-actions"><button id="test-api-btn" class="secondary-btn">Uji koneksi</button><button id="save-api-btn" class="primary-btn">Simpan</button></div><p class="field-hint">Saat di-deploy ke Netlify, kosongkan kolom ini. URL Apps Script disimpan sebagai environment variable rahasia di Netlify dan browser hanya memanggil endpoint /api pada domain Anda.</p></article>
+          <article class="card setting-card"><div class="setting-heading"><span class="setting-icon">☷</span><div><h2>Struktur profesional</h2><p class="muted">Data dipisah ke sheet terstandar agar dapat diaudit.</p></div></div><ul class="schema-list"><li><b>USERS & SESSIONS</b><span>Akun, verifier PIN, dan sesi berjangka.</span></li><li><b>BOOKS & MEMBERS</b><span>Pemisahan buku dan peran akses.</span></li><li><b>ACCOUNTS</b><span>Chart of accounts per buku.</span></li><li><b>JOURNALS & LINES</b><span>Header jurnal dan detail debit-kredit.</span></li><li><b>AUDIT_LOG</b><span>Jejak aktivitas penting.</span></li></ul></article>
+          <article class="card warning-card"><span>!</span><div><h3>Catatan keamanan penting</h3><p>PIN adalah kompromi kenyamanan. Untuk penggunaan bisnis nyata, gunakan minimal 8 digit unik, aktifkan verifikasi perangkat bila tersedia, dan batasi akses spreadsheet hanya ke pemilik/script. Hindari menyimpan PIN atau token dalam sheet biasa.</p></div></article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal-root" class="modal-root hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header"><div><p id="modal-eyebrow" class="eyebrow">ENTRI</p><h2 id="modal-title">Judul</h2></div><button class="icon-btn" data-close-modal aria-label="Tutup">×</button></div>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <template id="journal-template">
+    <form id="journal-form" class="modal-form">
+      <div class="form-grid two"><label>Tanggal<input id="journal-date" type="date" required /></label><label>Referensi <input id="journal-reference" maxlength="40" placeholder="Opsional, mis. INV-001" /></label></div>
+      <label>Deskripsi transaksi<input id="journal-description" maxlength="160" placeholder="Contoh: Pembayaran sewa kantor November" required /></label>
+      <div class="journal-lines-heading"><strong>Baris jurnal</strong><button id="add-journal-line" class="text-btn" type="button">＋ Tambah baris</button></div>
+      <div id="journal-lines" class="journal-lines"></div>
+      <div class="journal-totals"><span>Total debit <b id="journal-debit-total">Rp0</b></span><span>Total kredit <b id="journal-credit-total">Rp0</b></span><strong id="journal-balance-status" class="unbalanced">Belum seimbang</strong></div>
+      <p class="field-hint">Gunakan minimal dua baris. Jurnal hanya dapat disimpan jika debit = kredit dan nominal lebih dari nol.</p>
+      <div class="modal-actions"><button class="secondary-btn" type="button" data-close-modal>Batal</button><button id="save-journal" class="primary-btn" type="submit">Simpan jurnal</button></div>
+    </form>
+  </template>
+
+  <template id="book-template"><form id="book-form" class="modal-form"><label>Nama buku pencatatan<input id="book-name" maxlength="70" placeholder="Mis. Keuangan Pribadi 2026" required /></label><label>Jenis kebutuhan<select id="book-type"><option value="personal">Pribadi</option><option value="business">Bisnis / UMKM</option><option value="project">Proyek</option><option value="family">Keluarga</option><option value="other">Lainnya</option></select></label><div class="form-grid two"><label>Mata uang<select id="book-currency"><option value="IDR">IDR — Rupiah</option></select></label><label>Tahun buku<input id="book-year" type="number" min="2020" max="2100" required /></label></div><div class="info-box"><b>Template double-entry</b><p>Sistem menambahkan chart of accounts awal untuk aset, kewajiban, ekuitas, pendapatan, dan beban. Anda tetap dapat menambah akun sendiri.</p></div><div class="modal-actions"><button class="secondary-btn" type="button" data-close-modal>Batal</button><button class="primary-btn" type="submit">Buat buku</button></div></form></template>
+  <template id="account-template"><form id="account-form" class="modal-form"><div class="form-grid two"><label>Kode akun<input id="account-code" maxlength="10" placeholder="6100" required /></label><label>Kelompok<select id="account-type"><option value="asset">Aset</option><option value="liability">Kewajiban</option><option value="equity">Ekuitas</option><option value="income">Pendapatan</option><option value="expense">Beban</option></select></label></div><label>Nama akun<input id="account-name" maxlength="70" placeholder="Mis. Beban Internet" required /></label><div class="info-box"><b>Saldo normal</b><p id="normal-balance-note">Aset dan beban bersaldo normal debit. Kelompok lain bersaldo normal kredit.</p></div><div class="modal-actions"><button class="secondary-btn" type="button" data-close-modal>Batal</button><button class="primary-btn" type="submit">Tambah akun</button></div></form></template>
+  <template id="budget-template"><form id="budget-form" class="modal-form"><label>Akun beban<select id="budget-account" required></select></label><div class="form-grid two"><label>Bulan<input id="budget-month" type="month" required /></label><label>Nilai anggaran<input id="budget-amount" inputmode="numeric" type="number" min="1" step="1000" placeholder="0" required /></label></div><label>Catatan <input id="budget-note" maxlength="100" placeholder="Opsional" /></label><div class="modal-actions"><button class="secondary-btn" type="button" data-close-modal>Batal</button><button class="primary-btn" type="submit">Simpan anggaran</button></div></form></template>
+  <template id="member-template"><form id="member-form" class="modal-form"><label>Nama pengguna yang diundang<input id="member-username" minlength="3" maxlength="32" placeholder="Harus sudah terdaftar" required /></label><label>Peran<select id="member-role"><option value="editor">Editor — dapat mencatat dan mengubah</option><option value="viewer">Pembaca — hanya melihat</option></select></label><div class="info-box"><b>Undangan langsung</b><p>Pengguna harus memiliki akun CatatRapi terlebih dahulu. Akses dapat dicabut oleh pemilik kapan saja.</p></div><div class="modal-actions"><button class="secondary-btn" type="button" data-close-modal>Batal</button><button class="primary-btn" type="submit">Berikan akses</button></div></form></template>
+
+  <script src="app.js"></script>
+</body>
+</html>
