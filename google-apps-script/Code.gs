@@ -12,7 +12,7 @@ const NK = {
   BOOKS: ['id','ownerId','name','type','year','currency','createdAt'],
   MEMBERS: ['id','bookId','userId','role','addedAt'],
   ACCOUNTS: ['id','bookId','code','name','type','active','createdAt'],
-  JOURNALS: ['id','bookId','date','reference','description','status','createdBy','createdAt'],
+  JOURNALS: ['id','bookId','date','reference','description','status','createdBy','createdAt','reversalOfId','correctsJournalId','replacedById','voidReason','voidedAt'],
   JOURNAL_LINES: ['id','journalId','bookId','accountId','debit','credit','memo'],
   BUDGETS: ['id','bookId','accountId','month','amount','note','createdAt'],
   SESSIONS: ['id','tokenHash','userId','expiresAt','createdAt'],
@@ -47,6 +47,8 @@ function route_(r) {
   if (action === 'createBook') return createBook_(session.user, r);
   if (action === 'createAccount') return createAccount_(session.user, r);
   if (action === 'createJournal') return createJournal_(session.user, r);
+  if (action === 'voidJournal') return voidJournal_(session.user, r);
+  if (action === 'correctJournal') return correctJournal_(session.user, r);
   if (action === 'createBudget') return createBudget_(session.user, r);
   if (action === 'shareBook') return shareBook_(session.user, r);
   throw new Error('Aksi API tidak dikenal.');
@@ -142,6 +144,8 @@ function allowedBookIds_(userId) {
 }
 function role_(userId,bookId) { const book=rows_('BOOKS').find(function(b){return b.id===bookId;}); if(!book) return ''; if(book.ownerId===userId)return 'owner'; const member=rows_('MEMBERS').find(function(m){return m.bookId===bookId&&m.userId===userId;});return member?String(member.role):''; }
 function assertEdit_(userId,bookId) { if (!['owner','editor'].includes(role_(userId,bookId))) throw new Error('Anda hanya memiliki akses baca untuk buku ini.'); }
+// Pemilik dapat mengoreksi seluruh jurnal. Editor hanya dapat mengoreksi jurnal yang dibuatnya sendiri.
+function assertCorrectJournal_(user,journal) { const role=role_(user.id,journal.bookId); if(role==='owner') return; if(role==='editor'&&journal.createdBy===user.id) return; throw new Error('Anda hanya dapat mengoreksi transaksi yang Anda buat sendiri.'); }
 function assertOwner_(userId,bookId) { if (role_(userId,bookId)!=='owner') throw new Error('Hanya pemilik buku yang dapat mengatur akses.'); }
 function bootstrap_(user) {
   const ids=allowedBookIds_(user.id), inBook=function(x){return ids.includes(x.bookId);}, books=rows_('BOOKS').filter(function(b){return ids.includes(b.id);}), members=rows_('MEMBERS').filter(inBook), accounts=rows_('ACCOUNTS').filter(inBook), journals=rows_('JOURNALS').filter(inBook), lines=rows_('JOURNAL_LINES').filter(inBook), budgets=rows_('BUDGETS').filter(inBook);
@@ -163,15 +167,41 @@ function createAccount_(user,r) {
   if(rows_('ACCOUNTS').some(function(a){return a.bookId===r.bookId&&String(a.code)===code;}))throw new Error('Kode akun sudah digunakan dalam buku ini.');
   const account={id:id_('acc'),bookId:r.bookId,code:code,name:name,type:type,active:true,createdAt:now_()};append_('ACCOUNTS',account);audit_(user.id,'CREATE_ACCOUNT',account.id);return {account:account};
 }
-function createJournal_(user,r) {
-  assertEdit_(user.id,r.bookId);const date=String(r.date||''),description=String(r.description||'').trim(),lines=Array.isArray(r.lines)?r.lines:[];
+function validateJournalRequest_(bookId,r) {
+  const date=String(r.date||''),description=String(r.description||'').trim(),lines=Array.isArray(r.lines)?r.lines:[];
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!description||description.length>160)throw new Error('Tanggal atau deskripsi transaksi tidak valid.');
   if(lines.length<2)throw new Error('Jurnal memerlukan minimal dua baris.');
-  const allowed={};rows_('ACCOUNTS').filter(function(a){return a.bookId===r.bookId&&String(a.active).toLowerCase()!=='false';}).forEach(function(a){allowed[a.id]=true;});let debit=0,credit=0;
+  const allowed={};rows_('ACCOUNTS').filter(function(a){return a.bookId===bookId&&String(a.active).toLowerCase()!=='false';}).forEach(function(a){allowed[a.id]=true;});let debit=0,credit=0;
   lines.forEach(function(line){const d=number_(line.debit),c=number_(line.credit);if(!allowed[line.accountId])throw new Error('Salah satu akun jurnal tidak valid.');if(d<0||c<0||(d>0&&c>0))throw new Error('Setiap baris jurnal harus berisi debit atau kredit saja.');debit+=d;credit+=c;});
   if(debit<=0||debit!==credit)throw new Error('Total debit dan kredit harus sama dan lebih dari nol.');
-  const journal={id:id_('jrn'),bookId:r.bookId,date:date,reference:String(r.reference||'').slice(0,40),description:description,status:'posted',createdBy:user.id,createdAt:now_()};append_('JOURNALS',journal);
-  const created=lines.map(function(line){const row={id:id_('line'),journalId:journal.id,bookId:r.bookId,accountId:line.accountId,debit:number_(line.debit),credit:number_(line.credit),memo:String(line.memo||'').slice(0,160)};append_('JOURNAL_LINES',row);return row;});audit_(user.id,'CREATE_JOURNAL',journal.id);return {journal:journal,lines:created};
+  return {date:date,description:description,lines:lines};
+}
+function createJournal_(user,r) {
+  assertEdit_(user.id,r.bookId);const valid=validateJournalRequest_(r.bookId,r);
+  const journal={id:id_('jrn'),bookId:r.bookId,date:valid.date,reference:String(r.reference||'').slice(0,40),description:valid.description,status:'posted',createdBy:user.id,createdAt:now_(),reversalOfId:'',correctsJournalId:'',replacedById:'',voidReason:'',voidedAt:''};append_('JOURNALS',journal);
+  const created=valid.lines.map(function(line){const row={id:id_('line'),journalId:journal.id,bookId:r.bookId,accountId:line.accountId,debit:number_(line.debit),credit:number_(line.credit),memo:String(line.memo||'').slice(0,160)};append_('JOURNAL_LINES',row);return row;});audit_(user.id,'CREATE_JOURNAL',journal.id);return {journal:journal,lines:created};
+}
+function voidJournal_(user,r) {
+  const journal=rows_('JOURNALS').find(function(j){return j.id===r.journalId&&j.bookId===r.bookId;});
+  if(!journal)throw new Error('Transaksi tidak ditemukan.');
+  if(String(journal.status)!=='posted')throw new Error('Hanya transaksi yang masih dibukukan dapat dibatalkan.');
+  assertCorrectJournal_(user,journal);const reason=String(r.reason||'').trim();if(reason.length<3)throw new Error('Isi alasan pembatalan minimal 3 karakter.');
+  const sourceLines=rows_('JOURNAL_LINES').filter(function(line){return line.journalId===journal.id;});const timestamp=now_();
+  const reversal={id:id_('jrn'),bookId:journal.bookId,date:journal.date,reference:('VOID-'+String(journal.reference||journal.id)).slice(0,40),description:('Pembatalan: '+journal.description).slice(0,160),status:'reversal',createdBy:user.id,createdAt:timestamp,reversalOfId:journal.id,correctsJournalId:'',replacedById:'',voidReason:'',voidedAt:''};append_('JOURNALS',reversal);
+  const reversalLines=sourceLines.map(function(line){const row={id:id_('line'),journalId:reversal.id,bookId:journal.bookId,accountId:line.accountId,debit:number_(line.credit),credit:number_(line.debit),memo:'Jurnal pembalik '+journal.id};append_('JOURNAL_LINES',row);return row;});
+  journal.status='voided';journal.voidReason=reason;journal.voidedAt=timestamp;update_('JOURNALS',journal._row,journal);delete journal._row;audit_(user.id,'VOID_JOURNAL',journal.id+': '+reason);
+  return {journal:journal,reversal:reversal,reversalLines:reversalLines};
+}
+function correctJournal_(user,r) {
+  const original=rows_('JOURNALS').find(function(j){return j.id===r.journalId&&j.bookId===r.bookId;});
+  if(!original)throw new Error('Transaksi yang akan dikoreksi tidak ditemukan.');
+  if(String(original.status)!=='posted')throw new Error('Transaksi ini sudah dibatalkan atau dikoreksi.');
+  assertCorrectJournal_(user,original);const reason=String(r.reason||'').trim();if(reason.length<3)throw new Error('Isi alasan koreksi minimal 3 karakter.');
+  assertEdit_(user.id,r.bookId);validateJournalRequest_(r.bookId,r);
+  const voidResult=voidJournal_(user,{bookId:r.bookId,journalId:r.journalId,reason:'Koreksi: '+reason});
+  const replacement=createJournal_(user,r);const storedOriginal=rows_('JOURNALS').find(function(j){return j.id===original.id;});storedOriginal.replacedById=replacement.journal.id;update_('JOURNALS',storedOriginal._row,storedOriginal);delete storedOriginal._row;
+  const storedReplacement=rows_('JOURNALS').find(function(j){return j.id===replacement.journal.id;});storedReplacement.correctsJournalId=original.id;update_('JOURNALS',storedReplacement._row,storedReplacement);delete storedReplacement._row;audit_(user.id,'CORRECT_JOURNAL',original.id+' -> '+replacement.journal.id+': '+reason);
+  return {original:storedOriginal,reversal:voidResult.reversal,reversalLines:voidResult.reversalLines,journal:storedReplacement,lines:replacement.lines};
 }
 function createBudget_(user,r) {
   assertEdit_(user.id,r.bookId);const account=rows_('ACCOUNTS').find(function(a){return a.id===r.accountId&&a.bookId===r.bookId&&a.type==='expense';});if(!account)throw new Error('Akun beban tidak valid.');if(!/^\d{4}-\d{2}$/.test(String(r.month||''))||number_(r.amount)<=0)throw new Error('Bulan atau nilai anggaran tidak valid.');

@@ -319,3 +319,26 @@ git push
 ```
 
 Netlify akan membangun dan menerbitkan versi baru secara otomatis.
+
+---
+
+## Koreksi transaksi yang salah
+
+Transaksi yang telah dibukukan tidak dihapus permanen agar laporan dan jejak audit tetap dapat dipertanggungjawabkan.
+
+Di halaman **Jurnal transaksi** tersedia aksi berikut untuk transaksi berstatus **Dibukukan**:
+
+- **Ubah** — membuka jurnal koreksi. CatatRapi membuat jurnal pembalik untuk transaksi lama, lalu menyimpan jurnal pengganti yang sudah diperbaiki.
+- **Batal** — meminta alasan pembatalan dan membuat jurnal pembalik otomatis.
+
+Dengan cara ini, transaksi lama tetap terlihat berstatus **Dibatalkan**, alasan tersimpan, dan laporan keuangan tetap netral karena jurnal pembalik membalik debit/kredit transaksi lama.
+
+Hak koreksi mengikuti kebijakan berikut:
+
+| Peran | Hak koreksi |
+|---|---|
+| Pemilik | Seluruh transaksi dalam buku |
+| Editor | Hanya transaksi yang dibuat sendiri |
+| Pembaca | Tidak dapat mengoreksi atau membatalkan |
+
+Setelah memperbarui `google-apps-script/Code.gs`, deploy ulang Apps Script sebagai **New version** agar endpoint API mengenali aksi koreksi dan pembatalan.

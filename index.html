@@ -97,9 +97,9 @@
       </section>
 
       <section id="view-transactions" class="view">
-        <div class="page-heading"><div><p class="eyebrow">JURNAL UMUM</p><h1>Transaksi</h1><p class="muted">Setiap entri harus memiliki total debit dan kredit yang sama.</p></div><button class="primary-btn" data-open-modal="journal">＋ Catat transaksi</button></div>
+        <div class="page-heading"><div><p class="eyebrow">TRANSAKSI</p><h1>Transaksi</h1><p class="muted">Masukkan pemasukan atau pengeluaran sekali; CatatRapi membuat jurnal berpasangannya otomatis.</p></div><button class="primary-btn" data-open-modal="transaction">＋ Catat transaksi</button></div>
         <div class="toolbar card"><div class="search-box">⌕<input id="transaction-search" placeholder="Cari deskripsi, referensi, atau akun" /></div><select id="transaction-period"><option value="all">Semua periode</option><option value="month">Bulan ini</option><option value="year">Tahun ini</option></select><button id="export-journal" class="secondary-btn small">⇩ Ekspor CSV</button></div>
-        <article class="card table-card"><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Referensi & deskripsi</th><th>Akun / jurnal</th><th class="right">Debit</th><th class="right">Kredit</th><th>Status</th><th></th></tr></thead><tbody id="transactions-table"></tbody></table></div><div id="transactions-empty" class="empty-state hidden"><span>⌁</span><h3>Belum ada transaksi</h3><p>Mulai catat transaksi pertama untuk buku ini.</p><button class="primary-btn" data-open-modal="journal">＋ Catat transaksi</button></div></article>
+        <article class="card table-card"><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Referensi & deskripsi</th><th>Akun / jurnal</th><th class="right">Debit</th><th class="right">Kredit</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="transactions-table"></tbody></table></div><div id="transactions-empty" class="empty-state hidden"><span>⌁</span><h3>Belum ada transaksi</h3><p>Mulai catat pemasukan atau pengeluaran pertama untuk buku ini.</p><button class="primary-btn" data-open-modal="transaction">＋ Catat transaksi</button></div></article>
       </section>
 
       <section id="view-accounts" class="view">
@@ -144,6 +144,23 @@
       <div id="modal-content"></div>
     </div>
   </div>
+
+  <template id="transaction-template">
+    <form id="simple-transaction-form" class="modal-form" novalidate>
+      <div class="transaction-type-switch" role="tablist" aria-label="Jenis transaksi">
+        <button class="transaction-type active income" type="button" data-quick-type="income">↗ Pemasukan</button>
+        <button class="transaction-type expense" type="button" data-quick-type="expense">↘ Pengeluaran</button>
+        <button class="transaction-type transfer" type="button" data-quick-type="transfer">⇄ Transfer</button>
+      </div>
+      <input id="quick-transaction-type" type="hidden" value="income" />
+      <div class="form-grid two"><label>Tanggal<input id="quick-date" type="date" /></label><label>Nominal<input id="quick-amount" type="number" min="1" step="1000" inputmode="numeric" placeholder="Contoh: 200000" /></label></div>
+      <label>Deskripsi transaksi<input id="quick-description" maxlength="160" placeholder="Contoh: Terima uang saku dari Abah Taufiq" /></label>
+      <div id="quick-account-fields" class="quick-account-fields"></div>
+      <div id="quick-journal-preview" class="quick-journal-preview" aria-live="polite"></div>
+      <div class="info-box"><b>Jurnal otomatis</b><p>Anda cukup memasukkan satu transaksi. CatatRapi otomatis membuat pasangan debit-kredit agar laporan tetap profesional dan seimbang.</p></div>
+      <div class="modal-actions"><button id="open-manual-journal" class="text-btn manual-journal-btn" type="button">Jurnal manual</button><span class="modal-actions-spacer"></span><button class="secondary-btn" type="button" data-close-modal>Batal</button><button id="save-simple-transaction" class="primary-btn" type="submit">Simpan transaksi</button></div>
+    </form>
+  </template>
 
   <template id="journal-template">
     <form id="journal-form" class="modal-form" novalidate>
