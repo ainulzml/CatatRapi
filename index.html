@@ -21,7 +21,7 @@
         <div><b>✓</b><span>Validasi debit dan kredit otomatis seimbang</span></div>
         <div><b>✓</b><span>Hak akses Pemilik, Editor, dan Pembaca</span></div>
       </div>
-      <p class="security-note">Data produksi disiapkan untuk disimpan melalui Google Sheets + Apps Script. Mode demo ini menyimpan data terenkripsi-verifier di browser Anda.</p>
+      <p class="security-note">Pada mode Google Drive Pribadi, transaksi tersimpan langsung di spreadsheet milik pengguna. CatatRapi hanya memakai layanan akun untuk username, PIN, dan sesi—bukan nominal atau jurnal.</p>
     </div>
 
     <div class="auth-panel form-panel">
@@ -82,6 +82,7 @@
 
       <section id="view-dashboard" class="view active-view">
         <div class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1>Ringkasan keuangan</h1><p id="dashboard-period" class="muted">Periode berjalan</p></div><div class="heading-actions"><button id="create-book-btn" class="secondary-btn">＋ Buku baru</button><button id="new-transaction-btn" class="primary-btn">＋ Catat transaksi</button></div></div>
+        <article id="drive-required-notice" class="drive-required-notice hidden"><div><span class="setting-icon">▦</span><div><h2>Hubungkan Google Drive untuk mulai mencatat</h2><p>File keuangan akan dibuat di Google Drive Anda sendiri. CatatRapi tidak menyimpan nominal transaksi di spreadsheet pusat.</p></div></div><button id="connect-drive-dashboard" data-connect-drive class="primary-btn">Hubungkan Google Drive</button></article>
         <div class="stat-grid">
           <article class="stat-card"><div class="stat-label"><span>Kas & bank</span><span class="stat-icon blue">⌁</span></div><strong id="stat-cash">Rp0</strong><small id="stat-cash-sub">Saldo akun likuid</small></article>
           <article class="stat-card"><div class="stat-label"><span>Pendapatan</span><span class="stat-icon green">↗</span></div><strong id="stat-income">Rp0</strong><small id="stat-income-sub">Bulan ini</small></article>
@@ -127,11 +128,11 @@
       </section>
 
       <section id="view-settings" class="view">
-        <div class="page-heading"><div><p class="eyebrow">KONEKSI</p><h1>Pengaturan data</h1><p class="muted">Gunakan Google Sheets sebagai basis data melalui Apps Script.</p></div></div>
+        <div class="page-heading"><div><p class="eyebrow">KEPEMILIKAN DATA</p><h1>Pengaturan data</h1><p class="muted">Data keuangan disimpan langsung pada Google Drive milik Anda, bukan spreadsheet pusat CatatRapi.</p></div></div>
         <div class="settings-grid">
-          <article class="card setting-card"><div class="setting-heading"><span class="setting-icon">▦</span><div><h2>Koneksi Google Sheets</h2><p class="muted">Produksi memakai proxy aman Netlify Function di <b>/api</b>.</p></div></div><label>URL Apps Script untuk pengujian langsung (opsional)<input id="api-url-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label><div class="settings-actions"><button id="test-api-btn" class="secondary-btn">Uji koneksi</button><button id="save-api-btn" class="primary-btn">Simpan</button></div><p class="field-hint">Saat di-deploy ke Netlify, kosongkan kolom ini. URL Apps Script disimpan sebagai environment variable rahasia di Netlify dan browser hanya memanggil endpoint /api pada domain Anda.</p></article>
-          <article class="card setting-card"><div class="setting-heading"><span class="setting-icon">☷</span><div><h2>Struktur profesional</h2><p class="muted">Data dipisah ke sheet terstandar agar dapat diaudit.</p></div></div><ul class="schema-list"><li><b>USERS & SESSIONS</b><span>Akun, verifier PIN, dan sesi berjangka.</span></li><li><b>BOOKS & MEMBERS</b><span>Pemisahan buku dan peran akses.</span></li><li><b>ACCOUNTS</b><span>Chart of accounts per buku.</span></li><li><b>JOURNALS & LINES</b><span>Header jurnal dan detail debit-kredit.</span></li><li><b>AUDIT_LOG</b><span>Jejak aktivitas penting.</span></li></ul></article>
-          <article class="card warning-card"><span>!</span><div><h3>Catatan keamanan penting</h3><p>PIN adalah kompromi kenyamanan. Untuk penggunaan bisnis nyata, gunakan minimal 8 digit unik, aktifkan verifikasi perangkat bila tersedia, dan batasi akses spreadsheet hanya ke pemilik/script. Hindari menyimpan PIN atau token dalam sheet biasa.</p></div></article>
+          <article class="card setting-card drive-setting-card"><div class="setting-heading"><span class="setting-icon">▦</span><div><h2>Google Drive pribadi</h2><p id="drive-connection-copy" class="muted">Hubungkan sekali untuk membuat file CatatRapi di Google Drive Anda.</p></div></div><div id="drive-connection-state" class="drive-connection-state"><span class="status-dot pending"></span><div><b>Belum terhubung</b><small>Belum ada data keuangan yang disimpan di layanan pusat.</small></div></div><div class="settings-actions"><button id="connect-drive-btn" data-connect-drive class="primary-btn">Hubungkan Google Drive</button><button id="open-drive-file-btn" class="secondary-btn hidden" type="button">Buka file saya ↗</button></div><p class="field-hint">CatatRapi meminta scope terbatas <b>drive.file</b>: hanya file yang digunakan aplikasi ini. Anda dapat mencabut akses dari Google Account kapan saja.</p></article>
+          <article class="card setting-card"><div class="setting-heading"><span class="setting-icon">☷</span><div><h2>Struktur file Anda</h2><p class="muted">Satu Spreadsheet untuk semua buku pencatatan Anda.</p></div></div><ul class="schema-list"><li><b>CR_BOOKS & CR_ACCOUNTS</b><span>Buku dan chart of accounts milik pengguna.</span></li><li><b>CR_JOURNALS & CR_JOURNAL_LINES</b><span>Jurnal double-entry dan detail debit-kredit.</span></li><li><b>CR_BUDGETS</b><span>Anggaran buku pencatatan.</span></li><li><b>CR_AUDIT_LOG</b><span>Jejak pencatatan dan koreksi di file pengguna.</span></li></ul></article>
+          <article class="card warning-card"><span>!</span><div><h3>Batas model satu Spreadsheet</h3><p>Jangan membagikan file ini ke Editor jika ada buku lain yang tetap pribadi: akses Google Drive berlaku untuk seluruh file. Fitur berbagi buku terpisah akan memakai file per buku agar batas akses tetap benar.</p></div></article>
         </div>
       </section>
     </main>
@@ -179,6 +180,9 @@
   <template id="budget-template"><form id="budget-form" class="modal-form"><label>Akun beban<select id="budget-account" required></select></label><div class="form-grid two"><label>Bulan<input id="budget-month" type="month" required /></label><label>Nilai anggaran<input id="budget-amount" inputmode="numeric" type="number" min="1" step="1000" placeholder="0" required /></label></div><label>Catatan <input id="budget-note" maxlength="100" placeholder="Opsional" /></label><div class="modal-actions"><button class="secondary-btn" type="button" data-close-modal>Batal</button><button class="primary-btn" type="submit">Simpan anggaran</button></div></form></template>
   <template id="member-template"><form id="member-form" class="modal-form"><label>Nama pengguna yang diundang<input id="member-username" minlength="3" maxlength="32" placeholder="Harus sudah terdaftar" required /></label><label>Peran<select id="member-role"><option value="editor">Editor — dapat mencatat dan mengubah</option><option value="viewer">Pembaca — hanya melihat</option></select></label><div class="info-box"><b>Undangan langsung</b><p>Pengguna harus memiliki akun CatatRapi terlebih dahulu. Akses dapat dicabut oleh pemilik kapan saja.</p></div><div class="modal-actions"><button class="secondary-btn" type="button" data-close-modal>Batal</button><button class="primary-btn" type="submit">Berikan akses</button></div></form></template>
 
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="vault-crypto.js"></script>
+  <script src="drive-storage.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -2,26 +2,37 @@
 
 > **Keuangan rapi, keputusan lebih pasti.**
 >
-> CatatRapi adalah aplikasi pencatatan keuangan multi-pengguna untuk pribadi, usaha, proyek, dan keluarga. Aplikasi menggunakan jurnal double-entry, peran akses, laporan dasar, Google Sheets sebagai penyimpanan awal, serta Google Apps Script sebagai backend.
+> CatatRapi adalah aplikasi pencatatan keuangan dengan jurnal double-entry, laporan dasar, dan koreksi berbasis jurnal pembalik.
 
-## Arsitektur
+## Arsitektur aktif: Google Drive milik pengguna
+
+> **Penting — bagian lama dalam README yang menjelaskan jurnal disimpan di spreadsheet pusat sudah tidak berlaku untuk deployment baru.** Ikuti [`GOOGLE-DRIVE-OWNED-DATA.md`](GOOGLE-DRIVE-OWNED-DATA.md) sebagai panduan implementasi dan migrasi yang berlaku.
 
 ```text
-catatrapi.byzamil.web.id
+Pengguna masuk dengan username + PIN CatatRapi
         │
-        ├─ Cloudflare: domain dan DNS
+        ├─ Netlify /api → Apps Script layanan akun
+        │                    └─ username, verifier PIN, sesi saja
         │
-        └─ Netlify: hosting website + Function /api
-                      │
-                      └─ Google Apps Script: autentikasi dan API
-                                   │
-                                   └─ Google Sheets: database
+        └─ Browser + OAuth Google → Google Drive pengguna sendiri
+                                      └─ satu Spreadsheet CatatRapi
+                                         berisi jurnal, akun, anggaran, laporan
 ```
 
-- **GitHub** menyimpan source code private dan memicu deployment otomatis.
-- **Netlify** menjalankan website dan meneruskan `/api` ke Apps Script tanpa memperlihatkan URL Apps Script pada browser.
+- **GitHub** menyimpan source code dan memicu deployment Netlify.
 - **Cloudflare** tetap mengelola domain/DNS `byzamil.web.id`.
-- **Google Apps Script + Sheets** menangani pengguna, buku pencatatan, jurnal, anggaran, hak akses, dan audit log.
+- **Apps Script** hanya mengelola akun dan sesi; ia tidak menerima nominal, jurnal, anggaran, atau laporan pada arsitektur baru.
+- **Google Drive pengguna** menyimpan data keuangannya sendiri. Operator CatatRapi tidak memiliki akses normal ke file tersebut.
+- OAuth Client ID web ada pada `drive-storage.js` dan bersifat publik; OAuth **Client Secret tidak pernah** boleh ditempatkan di frontend.
+
+## Sebelum deploy
+
+1. Aktifkan **Google Drive API** dan **Google Sheets API** pada Google Cloud Project Anda.
+2. Tambahkan origin domain produksi yang benar ke OAuth Client ID pada **Authorized JavaScript origins**.
+3. Baca [`GOOGLE-DRIVE-OWNED-DATA.md`](GOOGLE-DRIVE-OWNED-DATA.md), terutama bagian batas token Google, migrasi data lama, dan kolaborasi.
+4. Deploy `google-apps-script/Code.gs` versi baru sebagai layanan akun saja, lalu deploy ulang Netlify.
+
+Kolaborasi Editor/Viewer pada satu file Drive belum diaktifkan, karena membagikan satu file akan membuka semua buku di dalamnya. Jangan mengklaim fitur tersebut aktif sampai mode file-per-buku selesai dibuat.
 
 ---
 
@@ -32,11 +43,13 @@ CatatRapi/
 ├── index.html                        # Tampilan utama aplikasi
 ├── styles.css                         # Desain responsif dan branding
 ├── app.js                             # Logika aplikasi frontend
+├── drive-storage.js                   # OAuth browser dan akses Sheets di Drive pengguna
+├── GOOGLE-DRIVE-OWNED-DATA.md         # Panduan mode data milik pengguna
 ├── assets/
 │   ├── catatrapi-crp-logo-web.png     # Logo CRp transparan untuk website
 │   └── catatrapi-crp-web-base64.txt   # Logo sebagai Data URI/Base64
 ├── google-apps-script/
-│   └── Code.gs                        # Backend Google Apps Script
+│   └── Code.gs                        # Layanan akun Google Apps Script (tanpa data finansial)
 ├── netlify/
 │   └── functions/
 │       └── api.js                     # Proxy aman Netlify ke GAS
@@ -72,13 +85,13 @@ Jika belum ada, unduh Git dari [git-scm.com](https://git-scm.com/).
 
 ---
 
-## B. Buat database Google Sheets
+## B. Buat spreadsheet **layanan akun**
 
-1. Buka Google Drive dan buat spreadsheet baru.
-2. Beri nama, misalnya:
+1. Buka Google Drive milik operator dan buat spreadsheet baru.
+2. Beri nama misalnya:
 
    ```text
-   CatatRapi Production
+   CatatRapi Account Service
    ```
 
 3. Salin ID spreadsheet dari URL berikut:
@@ -87,11 +100,13 @@ Jika belum ada, unduh Git dari [git-scm.com](https://git-scm.com/).
    https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit
    ```
 
-4. Jangan membuat spreadsheet sebagai public editor dan jangan membagikannya kepada pengguna aplikasi biasa.
+4. Spreadsheet ini hanya akan berisi `USERS`, `SESSIONS`, dan `AUDIT_LOG` untuk akun. Jangan pernah memasukkan jurnal/nominal pengguna ke file ini.
+
+> Spreadsheet keuangan dibuat otomatis di Google Drive masing-masing pengguna setelah mereka menekan **Hubungkan Google Drive**.
 
 ---
 
-## C. Pasang backend Google Apps Script
+## C. Pasang backend Apps Script untuk akun
 
 1. Dari spreadsheet, buka **Extensions → Apps Script**.
 2. Hapus kode default.
@@ -230,17 +245,23 @@ Di website yang sudah di-deploy, aplikasi otomatis memakai `/api`. Jangan mengis
 
 ## F. Hubungkan domain dari Cloudflare
 
-Rekomendasi subdomain:
+Subdomain production yang dipilih:
 
 ```text
-catatrapi.byzamil.web.id
+crp.byzamil.web.id
+```
+
+Tambahkan origin ini juga pada OAuth Client Google:
+
+```text
+https://crp.byzamil.web.id
 ```
 
 ### Di Netlify
 
 1. Buka project CatatRapi → **Domain management**.
 2. Pilih **Add a domain**.
-3. Masukkan `catatrapi.byzamil.web.id`.
+3. Masukkan `crp.byzamil.web.id`.
 4. Catat target DNS yang diberikan Netlify. Biasanya hostname Netlify Anda, namun gunakan nilai persis dari dashboard Netlify.
 
 ### Di Cloudflare
@@ -250,14 +271,14 @@ catatrapi.byzamil.web.id
 
 | Type | Name | Target |
 |---|---|---|
-| CNAME | `catatrapi` | target yang ditampilkan Netlify |
+| CNAME | `crp` | target yang ditampilkan Netlify |
 
 3. Saat setup pertama, pilih **DNS only** (awan abu-abu).
 4. Tunggu domain aktif dan sertifikat HTTPS Netlify selesai.
 5. Buka:
 
    ```text
-   https://catatrapi.byzamil.web.id
+   https://crp.byzamil.web.id
    ```
 
 Setelah stabil, Cloudflare proxy/awan oranye boleh diuji jika ingin WAF atau proteksi tambahan. Jika memakai proxy Cloudflare, gunakan SSL/TLS mode **Full (strict)**. Jangan gunakan **Flexible**.
@@ -268,13 +289,15 @@ Setelah stabil, Cloudflare proxy/awan oranye boleh diuji jika ingin WAF atau pro
 
 Gunakan browser incognito untuk pengujian bersih.
 
-1. Daftarkan akun pertama.
-2. Buat buku pencatatan baru.
-3. Tambahkan transaksi dengan nilai debit dan kredit yang sama.
-4. Periksa laporan laba rugi, posisi keuangan, dan neraca saldo.
-5. Periksa spreadsheet: sheet `USERS`, `BOOKS`, `ACCOUNTS`, `JOURNALS`, dan `JOURNAL_LINES` harus terisi.
-6. Daftarkan akun kedua lalu uji undangan peran **Editor** dan **Pembaca**.
-7. Pastikan Pembaca tidak bisa mencatat transaksi.
+1. Daftarkan akun pertama dan masuk dengan username + PIN.
+2. Tekan **Hubungkan Google Drive**, pilih akun Google uji, lalu setujui izin `drive.file`.
+3. Pastikan file `CatatRapi — Data Keuangan` dibuat pada Google Drive akun uji.
+4. Buat buku dan tambahkan transaksi dengan nilai debit dan kredit yang sama.
+5. Periksa laporan laba rugi, posisi keuangan, dan neraca saldo.
+6. Periksa spreadsheet layanan akun operator: hanya `USERS`, `SESSIONS`, dan `AUDIT_LOG` akun yang terisi—tidak ada nominal atau jurnal.
+7. Periksa spreadsheet Google Drive pengguna: tab `CR_JOURNALS` dan `CR_JOURNAL_LINES` harus berisi data transaksi.
+8. Uji login ulang pada browser yang sama. Jika akses token Google masih berlaku, data Drive terbuka tanpa permintaan persetujuan baru; uji juga tombol **Perbarui akses Google Drive**.
+9. Jangan menguji undangan Editor/Pembaca pada mode satu Spreadsheet; fitur tersebut sengaja dinonaktifkan sampai sharing per-buku tersedia.
 
 ---
 
@@ -341,4 +364,4 @@ Hak koreksi mengikuti kebijakan berikut:
 | Editor | Hanya transaksi yang dibuat sendiri |
 | Pembaca | Tidak dapat mengoreksi atau membatalkan |
 
-Setelah memperbarui `google-apps-script/Code.gs`, deploy ulang Apps Script sebagai **New version** agar endpoint API mengenali aksi koreksi dan pembatalan.
+Pada mode Google Drive Pribadi, aturan koreksi dan jurnal pembalik divalidasi di browser lalu disimpan langsung ke file Drive pengguna. `Code.gs` tidak menerima isi koreksi atau nominal transaksi.

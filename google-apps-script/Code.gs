@@ -1,11 +1,14 @@
 /*
- * CatatRapi — Google Apps Script API
- * 1) Buat Google Spreadsheet kosong.
+ * CatatRapi — layanan akun Google Apps Script
+ *
+ * Backend ini hanya menangani username, verifier PIN, sesi, dan audit akun.
+ * Data keuangan TIDAK boleh melalui endpoint ini. Pada mode Google Drive Pribadi,
+ * browser pengguna berbicara langsung ke Google Sheets miliknya dengan OAuth.
+ *
+ * 1) Buat Google Spreadsheet kosong khusus layanan akun CatatRapi.
  * 2) Extensions > Apps Script, ganti isi Code.gs dengan file ini.
- * 3) Project Settings > Script properties: set SPREADSHEET_ID ke ID spreadsheet.
- *    Optional: set PIN_PEPPER to a long random secret only you know.
- * 4) Deploy > New deployment > Web app. Execute as: Me. Who has access: Anyone.
- * 5) Copy URL /exec to Pengaturan data in CatatRapi.
+ * 3) Project Settings > Script properties: set SPREADSHEET_ID dan PIN_PEPPER.
+ * 4) Deploy sebagai Web App, lalu simpan URL /exec sebagai GAS_WEB_APP_URL di Netlify.
  */
 const NK = {
   USERS: ['id','name','username','salt','verifier','active','createdAt'],
@@ -44,19 +47,13 @@ function route_(r) {
   const session = requireSession_(r.token);
   if (action === 'bootstrap') return bootstrap_(session.user);
   if (action === 'logout') return logout_(session);
-  if (action === 'createBook') return createBook_(session.user, r);
-  if (action === 'createAccount') return createAccount_(session.user, r);
-  if (action === 'createJournal') return createJournal_(session.user, r);
-  if (action === 'voidJournal') return voidJournal_(session.user, r);
-  if (action === 'correctJournal') return correctJournal_(session.user, r);
-  if (action === 'createBudget') return createBudget_(session.user, r);
-  if (action === 'shareBook') return shareBook_(session.user, r);
+  if (['createBook','createAccount','createJournal','voidJournal','correctJournal','createBudget','shareBook'].includes(action)) throw new Error('Data keuangan disimpan langsung di Google Drive pengguna, bukan layanan akun CatatRapi.');
   throw new Error('Aksi API tidak dikenal.');
 }
 
 function setup_() {
   const ss = spreadsheet_();
-  Object.keys(NK).forEach(function(name) {
+  ['USERS','SESSIONS','AUDIT_LOG'].forEach(function(name) {
     let sheet = ss.getSheetByName(name);
     if (!sheet) sheet = ss.insertSheet(name);
     const headers = NK[name];
@@ -118,9 +115,8 @@ function register_(r) {
   if (rows_('USERS').some(function(u){return String(u.username).toLowerCase()===username;})) throw new Error('Nama pengguna ini sudah digunakan.');
   const user={id:id_('usr'),name:name,username:username,salt:salt_(),verifier:'',active:true,createdAt:now_()};
   user.verifier=pinVerifier_(pin,user.salt); append_('USERS',user);
-  const book=makeBook_(user, name.split(/\s+/)[0]+' — Pribadi','personal',new Date().getFullYear());
-  audit_(user.id,'REGISTER','Akun dan buku awal dibuat: '+book.id);
-  return {user:publicUser_(user),book:book};
+  audit_(user.id,'REGISTER','Akun dibuat; data keuangan berada di Google Drive pengguna.');
+  return {user:publicUser_(user)};
 }
 function login_(r) {
   const username=String(r.username||'').trim().toLowerCase(), pin=String(r.pin||'');
@@ -148,11 +144,9 @@ function assertEdit_(userId,bookId) { if (!['owner','editor'].includes(role_(use
 function assertCorrectJournal_(user,journal) { const role=role_(user.id,journal.bookId); if(role==='owner') return; if(role==='editor'&&journal.createdBy===user.id) return; throw new Error('Anda hanya dapat mengoreksi transaksi yang Anda buat sendiri.'); }
 function assertOwner_(userId,bookId) { if (role_(userId,bookId)!=='owner') throw new Error('Hanya pemilik buku yang dapat mengatur akses.'); }
 function bootstrap_(user) {
-  const ids=allowedBookIds_(user.id), inBook=function(x){return ids.includes(x.bookId);}, books=rows_('BOOKS').filter(function(b){return ids.includes(b.id);}), members=rows_('MEMBERS').filter(inBook), accounts=rows_('ACCOUNTS').filter(inBook), journals=rows_('JOURNALS').filter(inBook), lines=rows_('JOURNAL_LINES').filter(inBook), budgets=rows_('BUDGETS').filter(inBook);
-  const visible={}; visible[user.id]=true; books.forEach(function(b){visible[b.ownerId]=true;});members.forEach(function(m){visible[m.userId]=true;});
-  const users=rows_('USERS').filter(function(u){return visible[u.id];}).map(publicUser_);
-  [books,members,accounts,journals,lines,budgets].forEach(function(arr){arr.forEach(function(o){delete o._row;});});
-  return {user:publicUser_(user),books:books,members:members,accounts:accounts,journals:journals,journalLines:lines,budgets:budgets,users:users};
+  // Intentionally returns no finance records. The browser obtains those directly
+  // from the spreadsheet owned by the signed-in user's Google account.
+  return {user:publicUser_(user),books:[],members:[],accounts:[],journals:[],journalLines:[],budgets:[],users:[publicUser_(user)]};
 }
 function makeBook_(owner,name,type,year) {
   if (!String(name||'').trim() || String(name).length>70) throw new Error('Nama buku wajib diisi (maksimal 70 karakter).');
